@@ -19,7 +19,6 @@ bot = commands.Bot(command_prefix="!", intents=intents, default_guild_ids=[int(i
 # File paths in the same directory as the script
 livequeue_file_path = os.path.join(os.path.dirname(__file__), "Livequeue.json")
 cooldowns_file_path = os.path.join(os.path.dirname(__file__), "Cooldowns.json")
-pings_file_path = os.path.join(os.path.dirname(__file__), "Pings.json")
 active_st_file_path = os.path.join(os.path.dirname(__file__), "ActiveStorytellers.json")
 New_ST_Exceptions_path = os.path.join(os.path.dirname(__file__), "NewSTExceptions.json")
 
@@ -63,7 +62,6 @@ def save_json(file_path, data):
 # Initialize in-memory queue, cooldowns, and active storytellers
 queue = load_json(livequeue_file_path)
 cooldowns = load_json(cooldowns_file_path)
-pings = load_json(pings_file_path)
 active_storytellers = load_json(active_st_file_path)
 New_ST_Exceptions = load_json(New_ST_Exceptions_path)
 
@@ -116,9 +114,7 @@ async def remove_queue(user_id):
 
 @bot.event
 async def on_ready():
-    print(f'Bot connected as {bot.user}. This bot is a member of the following guilds:')
-    for g in bot.guilds:
-        print(f'* {g.name}')
+    print(f'Bot connected as {bot.user}')
     check_queue.start()
 
 @bot.slash_command(name="join", description="Join the Live Queue")
@@ -140,8 +136,8 @@ async def join(
     current_time = time.time()
     join_threshold = datetime.now(timezone.utc) - timedelta(weeks=2)
     
-    if user.joined_at > join_threshold and user.id not in New_ST_Exceptions:
-        await interaction.response.send_message(f"{user.display_name} you must be on the server for more than 2 weeks to storytell on the server.")
+    if user.joined_at > join_threshold or user.id in New_ST_Exceptions:
+        await interaction.response.send_message(f"{member.display_name} you must be on the server for more than 2 weeks to storytell on the server.")
         return
 
     # Check if the user is on cooldown
@@ -178,28 +174,6 @@ async def join(
 
     await interaction.response.send_message(f"{user.display_name} has been added to the queue.")
 
-@bot.slash_command(name="setdmalerts", description="Set your DM alerts preferences.")
-async def set_dm_alerts(
-    interaction: nextcord.Interaction,
-    next_in_queue: str = nextcord.SlashOption(
-        name="next_in_queue", description="Notify when you are about to ST", choices={"Yes": "Yes", "No": "No"}, required=True),
-    second_in_queue: str = nextcord.SlashOption(
-        name="second_in_queue", description="Notify when second in queue", choices={"Yes": "Yes", "No": "No"}, required=True),
-    merge_split: str = nextcord.SlashOption(
-        name="merge_split", description="Notify on merge or split", choices={"Yes": "Yes", "No": "No"}, required=True),
-    earlier_queue_members_leaving: str = nextcord.SlashOption(
-        name="earlier_queue_members_leaving", description="Notify if earlier queue members leave", choices={"Yes": "Yes", "No": "No"}, required=True)
-):
-    user = interaction.user
-    preferences = {
-        "Next_in_Queue": next_in_queue,
-        "2nd_in_Queue": second_in_queue,
-        "Merge_Split": merge_split,
-        "Earlier_Queue_members_leaving": earlier_queue_members_leaving
-    }
-    pings[str(user.id)] = preferences
-    await interaction.response.send_message(f"Your preferences have been updated", ephemeral=True)
-
 @bot.slash_command(name="list", description="List the current queue(s)")
 async def list_queue(interaction: nextcord.Interaction):
     sorted_queue = sorted(queue.values(), key=lambda x: x["Merged_Queue_Position"])
@@ -210,13 +184,11 @@ async def list_queue(interaction: nextcord.Interaction):
         t = '\n'.join(
             [f'[{str(entry["QueueType"])[0]}] {entry["DisplayName"]} | {str(entry["Notes"])[:100] if entry["Notes"] else "None"}' for entry in sorted_queue])
         embed.add_field(name="Current Queue", value=t, inline=False)
-        await interaction.response.send_message(embed=embed)
-        return
 
     if MERGED:
         embed = nextcord.Embed(title="Merged Queue List")
         t = '\n'.join(
-            [f'[{str(entry["QueueType"])[0]}] {entry["DisplayName"]} | {str(entry["Notes"])[:100] if entry["Notes"] else "None"}' for entry in sorted_queue])
+            [f'{entry["DisplayName"]} | {str(entry["Notes"])[:100] if entry["Notes"] else "None"}' for entry in sorted_queue])
         embed.add_field(name="Current Queue", value=t, inline=False)
         await interaction.response.send_message(embed=embed)
     else:
@@ -225,13 +197,13 @@ async def list_queue(interaction: nextcord.Interaction):
         
         embed = nextcord.Embed(title="Beginner/Any Queue List")
         t = '\n'.join(
-            [f'[{str(entry["QueueType"])[0]}] {entry["DisplayName"]} | {str(entry["Notes"])[:100] if entry["Notes"] else "None"}' for entry in beginner_any_queue])
+            [f'{entry["DisplayName"]} | {str(entry["Notes"])[:100] if entry["Notes"] else "None"}' for entry in beginner_any_queue])
         embed.add_field(name="Current Queue", value=t, inline=False)
         await interaction.response.send_message(embed=embed)
 
         embed = nextcord.Embed(title="Pickup/Any Queue List")
         t = '\n'.join(
-            [f'[{str(entry["QueueType"])[0]}] {entry["DisplayName"]} | {str(entry["Notes"])[:100] if entry["Notes"] else "None"}' for entry in pickup_any_queue])
+            [f'{entry["DisplayName"]} | {str(entry["Notes"])[:100] if entry["Notes"] else "None"}' for entry in pickup_any_queue])
         embed.add_field(name="Current Queue", value=t, inline=False)
         await channel_to_send.send(embed=embed)
 
@@ -255,11 +227,6 @@ async def leave_queue(interaction: nextcord.Interaction):
         else:
             channel = bot.get_channel(MERGED_CHANNEL_ID)
 
-        for userID in queue:
-            if pings[userID]["Earlier_Queue_members_leaving"] == "Yes":
-                member = bot.fetch_user(userID)
-                await member.send("Someone ahead of you has left the queue, please check how this effects you and your ability to ST")
-
         await channel.send(f"{user.display_name} has been removed from the queue and is on cooldown until <t:{current_time + LEAVE_COOLDOWN_DURATION}:f>.")
         await interaction.response.send_message("You have left the queue.", ephemeral=True)
     else:
@@ -282,11 +249,6 @@ async def removefromqueue(interaction: nextcord.Interaction, user: nextcord.Memb
             channel = bot.get_channel(PICKUP_CHANNEL_ID)
         else:
             channel = bot.get_channel(MERGED_CHANNEL_ID)
-
-        for userID in queue:
-            if pings[userID]["Earlier_Queue_members_leaving"] == "Yes":
-                member = bot.fetch_user(userID)
-                await member.send("Someone ahead of you has left the queue, please check how this effects you and your ability to ST")
 
         await channel.send(f"{user.display_name} has been removed from the queue and is on cooldown until <t:{current_time + LEAVE_COOLDOWN_DURATION}:f>.")
         await interaction.response.send_message(f"You removed {user.display_name} the queue.", ephemeral=True)
@@ -313,10 +275,8 @@ async def check_cooldown(interaction: nextcord.Interaction):
 async def save(interaction: nextcord.Interaction):
     save_json(livequeue_file_path, queue)
     save_json(cooldowns_file_path, cooldowns)
-    save_json(pings_file_path, pings)
     save_json(active_st_file_path, active_storytellers)
     save_json(New_ST_Exceptions_path, New_ST_Exceptions)
-
     await interaction.response.send_message("The queue, cooldowns, and active storytellers have been saved to the JSON files.")
 
 @bot.slash_command(name="load", description="Load the queue from the JSON file")
@@ -325,10 +285,8 @@ async def load(interaction: nextcord.Interaction):
     global cooldowns
     global active_storytellers
     global New_ST_Exceptions
-    global pings
     queue = load_json(livequeue_file_path)
     cooldowns = load_json(cooldowns_file_path)
-    pings = load_json(pings_file_path)
     active_storytellers = load_json(active_st_file_path)
     New_ST_Exceptions = load_json(New_ST_Exceptions_path)
     await interaction.response.send_message("The queue, cooldowns, and active storytellers have been loaded from the JSON files.")
@@ -337,20 +295,12 @@ async def load(interaction: nextcord.Interaction):
 async def split(interaction: nextcord.Interaction):
     global MERGED
     MERGED = False
-    for userID in queue:
-            if pings[userID]["Merge_Split"] == "Yes":
-                member = bot.fetch_user(userID)
-                await member.send("The Queue has been Split, please check how this effects your ability to ST")
     await interaction.response.send_message("The queue has been split into Beginner / Pickup Games.")
 
 @bot.slash_command(name="merge", description="Merge Beginner / Pickup Games into one Queue")
 async def merge(interaction: nextcord.Interaction):
     global MERGED
     MERGED = True
-    for userID in queue:
-            if pings[userID]["Merge_Split"] == "Yes":
-                member = bot.fetch_user(userID)
-                await member.send("The Queue has been Merged, please check how this effects your ability to ST")
     await interaction.response.send_message("The queue has been merged into one Queue.")
 
 @bot.slash_command(name="pause", description="Pause the queue if there aren't enough players")
@@ -636,8 +586,8 @@ async def check_queue():
                 embed = nextcord.Embed(title=f"Game Notification for {queue[str(user_id)]['QueueType']} Queue", description=f"{user.mention}, it's your turn!")
                 embed.set_thumbnail(url=user.display_avatar.url)
                 timeout_timestamp = int(time.time()) + TIMEOUT_TIMER
-                embed.add_field(name="Notes:", value=f"{queue[str(user_id)]['Notes']}", inline=False)
                 embed.add_field(name="Action Required", value=f"Please choose to start or leave the queue. Timeout <t:{timeout_timestamp}:R>", inline=False)
+
                 view = nextcord.ui.View()
                 start_button = nextcord.ui.Button(label="Start", style=nextcord.ButtonStyle.green)
                 leave_button = nextcord.ui.Button(label="Leave", style=nextcord.ButtonStyle.red)
@@ -665,14 +615,10 @@ async def check_queue():
 
                 await channel.send(embed=embed, view=view)
                 await channel.send(f"{user.mention}, it's your turn!")
-                if pings[str(user.id)]['Next_in_Queue'] == "Yes":
-                            await user.send("You are now the required ST on the unofficial, Please ensure you press the START Button to begin")
                 try:
                     next_user_id = sorted_queue[1]["Discord_ID"]
                     next_user = await bot.fetch_user(next_user_id)
                     await channel.send(f"{next_user.mention}, You are 2nd in the queue!")
-                    if pings[str(next_user.id)]['2nd_in_Queue'] == "Yes":
-                            await next_user.send("You are 2nd in the queue on the unofficial, please be ready for your turn")
                 except:
                     await channel.send("Queue is empty after you.")
 
@@ -705,7 +651,6 @@ async def check_queue():
                     embed = nextcord.Embed(title=f"Game Notification for {queue[str(user_id)]['QueueType']} Queue", description=f"{user.mention}, it's your turn!")
                     embed.set_thumbnail(url=user.display_avatar.url)
                     timeout_timestamp = int(time.time()) + TIMEOUT_TIMER
-                    embed.add_field(name="Notes:", value=f"{queue[str(user_id)]['Notes']}", inline=False)
                     embed.add_field(name="Action Required", value=f"Please choose to start or leave the queue. Timeout at <t:{timeout_timestamp}:R>", inline=False)
 
                     view = nextcord.ui.View()
@@ -735,15 +680,11 @@ async def check_queue():
 
                     await channel.send(embed=embed, view=view)
                     await channel.send(f"{user.mention}, it's your turn!")
-                    if pings[str(user.id)]['Next_in_Queue'] == "Yes":
-                            await user.send("You are now the required ST on the unofficial, Please ensure you press the START Button to begin")
 
                     try:
                         next_user_id = sorted_beginner_queue[1]["Discord_ID"]
                         next_user = await bot.fetch_user(next_user_id)
                         await channel.send(f"{next_user.mention}, You are 2nd in the queue!")
-                        if pings[str(next_user.id)]['2nd_in_Queue'] == "Yes":
-                            await next_user.send("You are 2nd in the queue on the unofficial, please be ready for your turn")
                     except:
                         await channel.send("Queue is empty after you.")
 
@@ -776,7 +717,6 @@ async def check_queue():
                     embed = nextcord.Embed(title=f"Game Notification for {queue[str(user_id)]['QueueType']} Queue", description=f"{user.mention}, it's your turn!")
                     embed.set_thumbnail(url=user.display_avatar.url)
                     timeout_timestamp = int(time.time()) + TIMEOUT_TIMER
-                    embed.add_field(name="Notes:", value=f"{queue[str(user_id)]['Notes']}", inline=False)
                     embed.add_field(name="Action Required", value=f"Please choose to start or leave the queue. Timeout at <t:{timeout_timestamp}:R>", inline=False)
 
                     view = nextcord.ui.View()
@@ -806,15 +746,11 @@ async def check_queue():
 
                     await channel.send(embed=embed, view=view)
                     await channel.send(f"{user.mention}, it's your turn!")
-                    if pings[str(user.id)]['Next_in_Queue'] == "Yes":
-                            await user.send("You are now the required ST on the unofficial, Please ensure you press the START Button to begin")
 
                     try:
                         next_user_id = sorted_pickup_queue[1]["Discord_ID"]
                         next_user = await bot.fetch_user(next_user_id)
                         await channel.send(f"{next_user.mention}, You are 2nd in the queue!")
-                        if pings[str(next_user.id)]['2nd_in_Queue'] == "Yes":
-                            await next_user.send("You are 2nd in the queue on the unofficial, please be ready for your turn")
                     except:
                         await channel.send("Queue is empty after you.")
 
