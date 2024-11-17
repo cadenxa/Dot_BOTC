@@ -135,9 +135,9 @@ async def join(
     user = interaction.user
     current_time = time.time()
     join_threshold = datetime.now(timezone.utc) - timedelta(weeks=2)
-    
-    if user.joined_at > join_threshold or user.id in New_ST_Exceptions:
-        await interaction.response.send_message(f"{member.display_name} you must be on the server for more than 2 weeks to storytell on the server.")
+
+    if user.joined_at > join_threshold and str(user.id) not in New_ST_Exceptions.keys():
+        await interaction.response.send_message(f"{user.mention} You must be on the server for more than 2 weeks to Storytell on the server.")
         return
 
     # Check if the user is on cooldown
@@ -181,11 +181,11 @@ async def list_queue(interaction: nextcord.Interaction):
     if not GAMES_RUNNING:
         embed = nextcord.Embed(title="Games Currently Paused")
         embed.add_field(name="Games are currently paused, please use `/resume` to restart the queue", value="----------", inline=False)
-        t = '\n'.join(
-            [f'[{str(entry["QueueType"])[0]}] {entry["DisplayName"]} | {str(entry["Notes"])[:100] if entry["Notes"] else "None"}' for entry in sorted_queue])
+        t = '\n'.join([f'[{str(entry["QueueType"])[0]}] {entry["DisplayName"]} | {str(entry["Notes"])[:100] if entry["Notes"] else "None"}' for entry in sorted_queue])
         embed.add_field(name="Current Queue", value=t, inline=False)
+        await interaction.response.send_message(embed=embed)
 
-    if MERGED:
+    elif MERGED:
         embed = nextcord.Embed(title="Merged Queue List")
         t = '\n'.join(
             [f'{entry["DisplayName"]} | {str(entry["Notes"])[:100] if entry["Notes"] else "None"}' for entry in sorted_queue])
@@ -208,8 +208,14 @@ async def list_queue(interaction: nextcord.Interaction):
         await channel_to_send.send(embed=embed)
 
 @bot.slash_command(name="leave", description="Leave the queue if you're signed up")
-async def leave_queue(interaction: nextcord.Interaction):
-    user = interaction.user
+async def leave(interaction: nextcord.Interaction):
+    await leave_queue(interaction)
+
+async def leave_queue(interaction: nextcord.Interaction, user_id = None):
+    if user_id is not None:
+        user = await bot.fetch_user(user_id)
+    else:
+        user = interaction.user
             
     current_time = int(time.time())
 
@@ -381,7 +387,9 @@ async def removecooldown(interaction: nextcord.Interaction):
 
     player = interaction.user
 
-    if str(player.id) in cooldowns:
+    if cooldowns[str(player.id)]["removeCooldown_Cooldown"] > current_time:
+        await interaction.response.send_message(f"{player.display_name} cannot remove their cooldown until <t:{cooldowns[str(player.id)]["removeCooldown_Cooldown"]}>.")
+    elif str(player.id) in cooldowns:
         cooldowns[str(player.id)]["Cooldown"] = current_time
         cooldowns[str(player.id)]["removeCooldown_Cooldown"] = current_time + REMOVECOOLDOWN_COOLDOWN_DURATION
         await interaction.response.send_message(f"{player.display_name}'s cooldown has been removed and they cannot remove their cooldown again until <t:{current_time + REMOVECOOLDOWN_COOLDOWN_DURATION}:f>.")
