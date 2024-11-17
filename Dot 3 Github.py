@@ -181,11 +181,11 @@ async def list_queue(interaction: nextcord.Interaction):
     if not GAMES_RUNNING:
         embed = nextcord.Embed(title="Games Currently Paused")
         embed.add_field(name="Games are currently paused, please use `/resume` to restart the queue", value="----------", inline=False)
-        t = '\n'.join(
-            [f'[{str(entry["QueueType"])[0]}] {entry["DisplayName"]} | {str(entry["Notes"])[:100] if entry["Notes"] else "None"}' for entry in sorted_queue])
+        t = '\n'.join([f'[{str(entry["QueueType"])[0]}] {entry["DisplayName"]} | {str(entry["Notes"])[:100] if entry["Notes"] else "None"}' for entry in sorted_queue])
         embed.add_field(name="Current Queue", value=t, inline=False)
+        await interaction.response.send_message(embed=embed)
 
-    if MERGED:
+    elif MERGED:
         embed = nextcord.Embed(title="Merged Queue List")
         t = '\n'.join(
             [f'{entry["DisplayName"]} | {str(entry["Notes"])[:100] if entry["Notes"] else "None"}' for entry in sorted_queue])
