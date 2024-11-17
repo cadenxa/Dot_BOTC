@@ -135,9 +135,9 @@ async def join(
     user = interaction.user
     current_time = time.time()
     join_threshold = datetime.now(timezone.utc) - timedelta(weeks=2)
-    
-    if user.joined_at > join_threshold or user.id in New_ST_Exceptions:
-        await interaction.response.send_message(f"{member.display_name} you must be on the server for more than 2 weeks to storytell on the server.")
+
+    if user.joined_at > join_threshold and str(user.id) not in New_ST_Exceptions.keys():
+        await interaction.response.send_message(f"{user.mention} You must be on the server for more than 2 weeks to Storytell on the server.")
         return
 
     # Check if the user is on cooldown
