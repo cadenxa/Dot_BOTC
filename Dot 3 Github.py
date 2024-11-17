@@ -208,8 +208,14 @@ async def list_queue(interaction: nextcord.Interaction):
         await channel_to_send.send(embed=embed)
 
 @bot.slash_command(name="leave", description="Leave the queue if you're signed up")
-async def leave_queue(interaction: nextcord.Interaction):
-    user = interaction.user
+async def leave(interaction: nextcord.Interaction):
+    await leave_queue(interaction)
+
+async def leave_queue(interaction: nextcord.Interaction, user_id = None):
+    if user_id is not None:
+        user = await bot.fetch_user(user_id)
+    else:
+        user = interaction.user
             
     current_time = int(time.time())
 
