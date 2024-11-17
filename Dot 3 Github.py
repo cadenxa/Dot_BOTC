@@ -387,7 +387,9 @@ async def removecooldown(interaction: nextcord.Interaction):
 
     player = interaction.user
 
-    if str(player.id) in cooldowns:
+    if cooldowns[str(player.id)]["removeCooldown_Cooldown"] > current_time:
+        await interaction.response.send_message(f"{player.display_name} cannot remove their cooldown until <t:{cooldowns[str(player.id)]["removeCooldown_Cooldown"]}>.")
+    elif str(player.id) in cooldowns:
         cooldowns[str(player.id)]["Cooldown"] = current_time
         cooldowns[str(player.id)]["removeCooldown_Cooldown"] = current_time + REMOVECOOLDOWN_COOLDOWN_DURATION
         await interaction.response.send_message(f"{player.display_name}'s cooldown has been removed and they cannot remove their cooldown again until <t:{current_time + REMOVECOOLDOWN_COOLDOWN_DURATION}:f>.")
