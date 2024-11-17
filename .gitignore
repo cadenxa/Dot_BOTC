@@ -1,3 +1,7 @@
 .env
 __pycache__
 venv
+Livequeue.json
+Cooldowns.json
+ActiveStorytellers.json
+NewSTExceptions.json
