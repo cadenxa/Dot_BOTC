@@ -468,7 +468,8 @@ async def startextra(interaction: nextcord.Interaction):
 
         # Notify user after 40 minutes
         await asyncio.sleep(RE_RACK_TIMER_DURATION)
-        await interaction.channel.send(f"{user.mention}, the Re-rack timer has expired.")
+        if str(user.id) in active_storytellers:
+            await interaction.channel.send(f"{user.mention}, the Re-rack timer has expired.")
         # Notify user after 2hr if still storytelling
         await asyncio.sleep(FIDDLER_WARNING_DURATION)
         if str(user.id) in active_storytellers:
@@ -568,7 +569,8 @@ async def start_user(interaction, user):
 
     # Notify user after 40 minutes
     await asyncio.sleep(RE_RACK_TIMER_DURATION)
-    await interaction.channel.send(f"{user.mention}, the Re-rack timer has expired.")
+    if str(user.id) in active_storytellers:
+        await interaction.channel.send(f"{user.mention}, the Re-rack timer has expired.")
     # Notify user after 2hrs if still storytelling
     await asyncio.sleep(FIDDLER_WARNING_DURATION)
     if str(user.id) in active_storytellers:
