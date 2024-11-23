@@ -562,23 +562,26 @@ async def setqueue(interaction: nextcord.Interaction, queue_type: str = nextcord
     await interaction.response.send_message(f"The queue for {queue_type} has been updated with the mentioned players.")
 
 async def start_user(interaction, user):
-    add_active_storyteller(user, queue[str(user.id)]["QueueType"])
-    await remove_queue(user.id)
-    await interaction.response.send_message(f"{user.display_name} is now active.", ephemeral=False)
-    #await check_queue()
-
-    # Notify user after 40 minutes
-    await asyncio.sleep(RE_RACK_TIMER_DURATION)
-    if str(user.id) in active_storytellers:
-        await interaction.channel.send(f"{user.mention}, the Re-rack timer has expired.")
-    # Notify user after 2hrs if still storytelling
-    await asyncio.sleep(FIDDLER_WARNING_DURATION)
-    if str(user.id) in active_storytellers:
-        await interaction.channel.send(f"{user.mention}, your game has gone on for 2 hours. Direct players to DM you if they need the game to be over. If the majority of players do so, you must end the game with the Fiddler.")
-    # Notify user after 3hrs if still storytelling
-    await asyncio.sleep(FIDDLER_ENDING_DURATION)
-    if str(user.id) in active_storytellers:
-        await interaction.channel.send(f"{user.mention}, your game has gone on for 3 hours. You are now required to end the game with the Fiddler.")
+    if str(user.id) in queue:
+        add_active_storyteller(user, queue[str(user.id)]["QueueType"])
+        await remove_queue(user.id)
+        await interaction.response.send_message(f"{user.display_name} is now active.", ephemeral=False)
+        #await check_queue()
+        
+        # Notify user after 40 minutes
+        await asyncio.sleep(RE_RACK_TIMER_DURATION)
+        if str(user.id) in active_storytellers:
+            await interaction.channel.send(f"{user.mention}, the Re-rack timer has expired.")
+        # Notify user after 2hrs if still storytelling
+        await asyncio.sleep(FIDDLER_WARNING_DURATION)
+        if str(user.id) in active_storytellers:
+            await interaction.channel.send(f"{user.mention}, your game has gone on for 2 hours. Direct players to DM you if they need the game to be over. If the majority of players do so, you must end the game with the Fiddler.")
+        # Notify user after 3hrs if still storytelling
+        await asyncio.sleep(FIDDLER_ENDING_DURATION)
+        if str(user.id) in active_storytellers:
+            await interaction.channel.send(f"{user.mention}, your game has gone on for 3 hours. You are now required to end the game with the Fiddler.")
+    else:
+        await interaction.response.send_message("The ST you are trying to start is not in queue and therefore can't be started.")
     
 
 @bot.slash_command(name="start", description="Start a game if you're next to ST")
