@@ -388,7 +388,7 @@ async def removecooldown(interaction: nextcord.Interaction):
     player = interaction.user
 
     if cooldowns[str(player.id)]["removeCooldown_Cooldown"] > current_time:
-        await interaction.response.send_message(f"{player.display_name} cannot remove their cooldown until <t:{cooldowns[str(player.id)]["removeCooldown_Cooldown"]}>.")
+        await interaction.response.send_message(f"{player.display_name} cannot remove their cooldown until <t:{cooldowns[str(player.id)]['removeCooldown_Cooldown']}>.")
     elif str(player.id) in cooldowns:
         cooldowns[str(player.id)]["Cooldown"] = current_time
         cooldowns[str(player.id)]["removeCooldown_Cooldown"] = current_time + REMOVECOOLDOWN_COOLDOWN_DURATION
@@ -466,7 +466,9 @@ async def startextra(interaction: nextcord.Interaction):
 
         # Notify user after 40 minutes
         await asyncio.sleep(RE_RACK_TIMER_DURATION)
-        await interaction.channel.send(f"{user.mention}, the Re-rack timer has expired.")
+        if str(user.id) in active_storytellers:
+            await interaction.channel.send(f"{user.mention}, the Re-rack timer has expired.")
+        
     else:
         await interaction.response.send_message("You are not eligible to start extra.")
 
@@ -550,14 +552,23 @@ async def setqueue(interaction: nextcord.Interaction, queue_type: str = nextcord
     await interaction.response.send_message(f"The queue for {queue_type} has been updated with the mentioned players.")
 
 async def start_user(interaction, user):
+    if str(user.id) not in queue:
+        await interaction.response.send_message("The ST you are trying to start is not in queue and therefore can't be started.")
+        return
     add_active_storyteller(user, queue[str(user.id)]["QueueType"])
-    await remove_queue(user.id)
-    await interaction.response.send_message(f"{user.display_name} is now active.", ephemeral=False)
-    #await check_queue()
 
-    # Notify user after 40 minutes
-    await asyncio.sleep(RE_RACK_TIMER_DURATION)
-    await interaction.channel.send(f"{user.mention}, the Re-rack timer has expired.")
+        add_active_storyteller(user, queue[str(user.id)]["QueueType"])
+        await remove_queue(user.id)
+        await interaction.response.send_message(f"{user.display_name} is now active.", ephemeral=False)
+        #await check_queue()
+        
+        # Notify user after 40 minutes
+        await asyncio.sleep(RE_RACK_TIMER_DURATION)
+        if str(user.id) in active_storytellers:
+            await interaction.channel.send(f"{user.mention}, the Re-rack timer has expired.")
+    else:
+        await interaction.response.send_message("The ST you are trying to start is not in queue and therefore can't be started.")
+    
 
 @bot.slash_command(name="start", description="Start a game if you're next to ST")
 async def start(interaction: nextcord.Interaction):
