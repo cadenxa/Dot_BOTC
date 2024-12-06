@@ -28,6 +28,8 @@ PICKUP_COOLDOWN_DURATION = 144000
 ANY_COOLDOWN_DURATION = 144000
 REMOVECOOLDOWN_COOLDOWN_DURATION = 5184000 # 60 Days
 RE_RACK_TIMER_DURATION = 2400  # 40 minutes
+FIDDLER_WARNING_DURATION = 4800  # 80 minutes after rerack (2hrs after game start)
+FIDDLER_ENDING_DURATION = 3600  # 60 minutes after fiddler warning (3hrs after game start)
 
 # Define cooldown duration for leaving the queue (1 hour in seconds)
 LEAVE_COOLDOWN_DURATION = 3600
@@ -388,7 +390,7 @@ async def removecooldown(interaction: nextcord.Interaction):
     player = interaction.user
 
     if cooldowns[str(player.id)]["removeCooldown_Cooldown"] > current_time:
-        await interaction.response.send_message(f"{player.display_name} cannot remove their cooldown until <t:{cooldowns[str(player.id)]["removeCooldown_Cooldown"]}>.")
+        await interaction.response.send_message(f"{player.display_name} cannot remove their cooldown until <t:{cooldowns[str(player.id)]['removeCooldown_Cooldown']}>.")
     elif str(player.id) in cooldowns:
         cooldowns[str(player.id)]["Cooldown"] = current_time
         cooldowns[str(player.id)]["removeCooldown_Cooldown"] = current_time + REMOVECOOLDOWN_COOLDOWN_DURATION
@@ -466,7 +468,17 @@ async def startextra(interaction: nextcord.Interaction):
 
         # Notify user after 40 minutes
         await asyncio.sleep(RE_RACK_TIMER_DURATION)
-        await interaction.channel.send(f"{user.mention}, the Re-rack timer has expired.")
+        if str(user.id) in active_storytellers:
+            await interaction.channel.send(f"{user.mention}, the Re-rack timer has expired.")
+        # Notify user after 2hr if still storytelling
+        await asyncio.sleep(FIDDLER_WARNING_DURATION)
+        if str(user.id) in active_storytellers:
+            await interaction.channel.send(f"{user.mention}, your game has gone on for 2 hours. Direct players to DM you if they need the game to be over. If the majority of players do so, you must end the game with the Fiddler.")
+        # Notify user after 3hrs if still storytelling
+        await asyncio.sleep(FIDDLER_ENDING_DURATION)
+        if str(user.id) in active_storytellers:
+            await interaction.channel.send(f"{user.mention}, your game has gone on for 3 hours. You are now required to end the game with the Fiddler.")
+        
     else:
         await interaction.response.send_message("You are not eligible to start extra.")
 
@@ -554,10 +566,20 @@ async def start_user(interaction, user):
     await remove_queue(user.id)
     await interaction.response.send_message(f"{user.display_name} is now active.", ephemeral=False)
     #await check_queue()
-
+    
     # Notify user after 40 minutes
     await asyncio.sleep(RE_RACK_TIMER_DURATION)
-    await interaction.channel.send(f"{user.mention}, the Re-rack timer has expired.")
+    if str(user.id) in active_storytellers:
+        await interaction.channel.send(f"{user.mention}, the Re-rack timer has expired.")
+    # Notify user after 2hrs if still storytelling
+    await asyncio.sleep(FIDDLER_WARNING_DURATION)
+    if str(user.id) in active_storytellers:
+        await interaction.channel.send(f"{user.mention}, your game has gone on for 2 hours. Direct players to DM you if they need the game to be over. If the majority of players do so, you must end the game with the Fiddler.")
+    # Notify user after 3hrs if still storytelling
+    await asyncio.sleep(FIDDLER_ENDING_DURATION)
+    if str(user.id) in active_storytellers:
+        await interaction.channel.send(f"{user.mention}, your game has gone on for 3 hours. You are now required to end the game with the Fiddler.")
+    
 
 @bot.slash_command(name="start", description="Start a game if you're next to ST")
 async def start(interaction: nextcord.Interaction):
