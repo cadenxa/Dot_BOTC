@@ -562,7 +562,13 @@ async def setqueue(interaction: nextcord.Interaction, queue_type: str = nextcord
     await interaction.response.send_message(f"The queue for {queue_type} has been updated with the mentioned players.")
 
 async def start_user(interaction, user):
-    if str(user.id) in queue:
+    if str(user.id) not in queue:
+        await interaction.response.send_message("The ST you are trying to start is not in queue and therefore can't be started.")
+        return
+
+    add_active_storyteller(user, queue[str(user.id)]["QueueType"])
+    ...
+        
         add_active_storyteller(user, queue[str(user.id)]["QueueType"])
         await remove_queue(user.id)
         await interaction.response.send_message(f"{user.display_name} is now active.", ephemeral=False)
