@@ -258,10 +258,13 @@ def test_rename_player():
     output.clear()
     receive(session, ["player", dict(index=2, property="name", value="Charles")])
     receive(session, ["pronouns", [2, "he/him"]])
-    assert session.players[2].name == "Charles"
+    receive(session, ["allowSelfNaming", True])
+    receive(session, ["name", [2, "Charlie"]])
+    assert session.players[2].name == "Charlie"
     assert session.players[2].pronouns == "he/him"
     assert any_line_matches(output, r'Charlie.*renamed.*Charles')
     assert any_line_matches(output, r'Charles.*he/him')
+    assert any_line_matches(output, r'Charles.*Charlie')
 
 def test_death_resurrection():
     session, output = simulated_session()
