@@ -84,6 +84,7 @@ def townsquare_handler(name):
 @townsquare_handler('ping')
 @townsquare_handler('votingSpeed')
 @townsquare_handler('isVoteWatchingAllowed')  # clocktower.live extension
+@townsquare_handler('allowSelfNaming')        # clocktower.live extension
 def ignore_message(*args):
     """
     Ignore all arguments for the received message.
@@ -284,6 +285,14 @@ def change_pronouns(session, pronoun_info):
         session.log(f'{player_name(player.name)} changed their pronouns to {player_pronouns(player.pronouns)}.')
     else:
         session.log(f'{player_name(player.name)} cleared their pronouns.')
+
+# clocktower.live extension
+@townsquare_handler('name')
+def change_name(session, name_info):
+    index, new_name = name_info
+    player = session.players[index]
+    old_name, player.name = player.name, new_name
+    session.log(f'{player_name(old_name)} changed their name to {player_name(new_name)}.')
 
 @townsquare_handler('nomination')
 def nominate(session, nom = None):
